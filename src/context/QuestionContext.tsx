@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import useLocalStorage from '@/hooks/useLocalStorage';
+import { db } from '@/firebaseConfig';
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  query,
+  orderBy,
+  setDoc
+} from 'firebase/firestore';
 import { Question, FilterOptions, SortOptions, Stats } from '@/types';
 
 interface QuestionContextType {
@@ -28,7 +39,14 @@ export const useQuestions = () => {
 };
 
 export const QuestionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [questions, setQuestions] = useLocalStorage<Question[]>('coding-questions', []);
+  const [questions, setQuestions] = React.useState<Question[]>([]);
+  React.useEffect(() => {
+    const q = query(collection(db, 'questions'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setQuestions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Question));
+    });
+    return unsubscribe;
+  }, []);
   
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     topic: '',
@@ -41,41 +59,34 @@ export const QuestionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     direction: 'desc',
   });
 
-  const addQuestion = useCallback((question: Omit<Question, 'id' | 'createdAt'>) => {
-    const newQuestion: Question = {
+  const addQuestion = useCallback(async (question: Omit<Question, 'id' | 'createdAt'>) => {
+    const newQuestion = {
       ...question,
-      id: crypto.randomUUID(),
       createdAt: Date.now(),
     };
-    
-    setQuestions((prevQuestions) => [...prevQuestions, newQuestion]);
-  }, [setQuestions]);
+    await addDoc(collection(db, 'questions'), newQuestion);
+  }, []);
 
-  const updateQuestion = useCallback((id: string, updates: Partial<Question>) => {
-    setQuestions((prevQuestions) =>
-      prevQuestions.map((q) => (q.id === id ? { ...q, ...updates } : q))
-    );
-  }, [setQuestions]);
+  const updateQuestion = useCallback(async (id: string, updates: Partial<Question>) => {
+    const questionRef = doc(db, 'questions', id);
+    await updateDoc(questionRef, updates);
+  }, []);
 
-  const deleteQuestion = useCallback((id: string) => {
-    setQuestions((prevQuestions) => prevQuestions.filter((q) => q.id !== id));
-  }, [setQuestions]);
+  const deleteQuestion = useCallback(async (id: string) => {
+    const questionRef = doc(db, 'questions', id);
+    await deleteDoc(questionRef);
+  }, []);
 
-  const toggleCompletion = useCallback((id: string, user: 'Puneet' | 'Komal') => {
-    setQuestions((prevQuestions) =>
-      prevQuestions.map((q) => {
-        if (q.id === id) {
-          return {
-            ...q,
-            ...(user === 'Puneet'
-              ? { completedByPuneet: !q.completedByPuneet }
-              : { completedByKomal: !q.completedByKomal }),
-          };
-        }
-        return q;
-      })
-    );
-  }, [setQuestions]);
+  const toggleCompletion = useCallback(async (id: string, user: 'Puneet' | 'Komal') => {
+    const question = questions.find(q => q.id === id);
+    if (!question) return;
+    const questionRef = doc(db, 'questions', id);
+    if (user === 'Puneet') {
+      await updateDoc(questionRef, { completedByPuneet: !question.completedByPuneet });
+    } else {
+      await updateDoc(questionRef, { completedByKomal: !question.completedByKomal });
+    }
+  }, [questions]);
 
   // Get unique topics from questions
   const topics = useMemo(() => {
