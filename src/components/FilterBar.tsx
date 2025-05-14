@@ -38,12 +38,13 @@ const FilterBar: React.FC = () => {
       if (prev.field === field) {
         return {
           ...prev,
-          direction: prev.direction === 'asc' ? 'desc' : 'asc'
+          direction: prev.direction === 'asc' ? 'desc' : 'asc',
         };
       }
       return {
-        field,
-        direction: 'asc'
+        ...prev,
+        field: field as keyof Question | '',
+        direction: 'asc',
       };
     });
   };

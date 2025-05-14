@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import useLocalStorage from '@/hooks/useLocalStorage';
-import { Question, QuestionLevel, FilterOptions, SortOptions, Stats } from '@/types';
+import { Question, FilterOptions, SortOptions, Stats } from '@/types';
 
 interface QuestionContextType {
   questions: Question[];
