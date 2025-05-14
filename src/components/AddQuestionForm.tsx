@@ -44,8 +44,8 @@ const AddQuestionForm: React.FC = () => {
     
     form.reset({
       platformLink: '',
-      level: 'Medium',
-      topic: data.topic, // Keep the same topic for adding multiple related questions
+      level: data.level,
+      topic: data.topic,
     });
   };
 
